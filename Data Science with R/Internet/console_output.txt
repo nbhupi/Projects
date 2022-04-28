@@ -1,0 +1,1522 @@
+> library(readxl)
+> raw.data = read_xlsx(choose.files())
+> data = raw.data
+> data[1:3,]
+# A tibble: 3 x 8
+  Bounces Exits Continent Sourcegroup Timeinpage Uniquepageviews Visits BouncesNew
+    <dbl> <dbl> <chr>     <chr>            <dbl>           <dbl>  <dbl>      <dbl>
+1       0     0 OC        (direct)            18               1      0          0
+2       0     0 N.America (direct)             4               1      0          0
+3       0     0 N.America Others              35               1      0          0
+> data$BouncesNew = NULL
+> str(data)
+Classes ‘tbl_df’, ‘tbl’ and 'data.frame':	32109 obs. of  7 variables:
+ $ Bounces        : num  0 0 0 0 0 0 0 0 0 0 ...
+ $ Exits          : num  0 0 0 0 0 0 0 0 0 0 ...
+ $ Continent      : chr  "OC" "N.America" "N.America" "N.America" ...
+ $ Sourcegroup    : chr  "(direct)" "(direct)" "Others" "public.tableausoftware.com" ...
+ $ Timeinpage     : num  18 4 35 70 81 75 186 710 712 344 ...
+ $ Uniquepageviews: num  1 1 1 1 1 1 1 1 1 1 ...
+ $ Visits         : num  0 0 0 0 0 0 0 0 1 1 ...
+> summary(data)
+    Bounces           Exits         Continent         Sourcegroup          Timeinpage       Uniquepageviews 
+ Min.   : 0.000   Min.   : 0.000   Length:32109       Length:32109       Min.   :    0.00   Min.   : 1.000  
+ 1st Qu.: 0.000   1st Qu.: 1.000   Class :character   Class :character   1st Qu.:    0.00   1st Qu.: 1.000  
+ Median : 1.000   Median : 1.000   Mode  :character   Mode  :character   Median :    0.00   Median : 1.000  
+ Mean   : 0.713   Mean   : 0.906                                         Mean   :   73.18   Mean   : 1.114  
+ 3rd Qu.: 1.000   3rd Qu.: 1.000                                         3rd Qu.:   10.00   3rd Qu.: 1.000  
+ Max.   :30.000   Max.   :36.000                                         Max.   :46745.00   Max.   :45.000  
+     Visits      
+ Min.   : 0.000  
+ 1st Qu.: 1.000  
+ Median : 1.000  
+ Mean   : 0.906  
+ 3rd Qu.: 1.000  
+ Max.   :45.000  
+> table(data$Bounces)
+
+    0     1     2     3     4     5     6     7     8     9    12    24    29    30 
+11501 19147  1065   214    91    44    19    14     6     4     1     1     1     1 
+> table(data$Exits)
+
+    0     1     2     3     4     5     6     7     8     9    10    12    15    27    33    36 
+ 6014 24164  1420   284   109    59    25    14     7     4     3     2     1     1     1     1 
+> table(data$Continent)
+
+       AF        AS        EU N.America        OC        SA 
+      321      3171      6470     20043      1356       748 
+> table(data$Sourcegroup)
+
+                  (direct)                   facebook                     google                     Others 
+                      7532                         92                      11542                       5360 
+public.tableausoftware.com                 reddit.com                       t.co        tableausoftware.com 
+                      1354                        616                       2249                       2388 
+       visualisingdata.com 
+                       976 
+> plot(data$Timeinpage)
+> boxplot(data$Timeinpage)
+> table(data$Uniquepageviews)
+
+    1     2     3     4     5     6     7     8     9    10    11    13    14    15    20    27    35    45 
+29709  1798   340   124    70    28    15     8     4     3     2     1     1     2     1     1     1     1 
+> table(data$Visits)
+
+    0     1     2     3     4     5     6     7     8     9    10    11    13    14    27    35    45 
+ 6223 23817  1536   293   113    63    25    17     7     4     4     2     1     1     1     1     1 
+> colSums(is.na(data))
+        Bounces           Exits       Continent     Sourcegroup      Timeinpage Uniquepageviews 
+              0               0               0               0               0               0 
+         Visits 
+              0 
+> plot(data$Visits, data$Uniquepageviews)
+> cor(data$Visits, data$Uniquepageviews)
+[1] 0.8144457
+> log_model = glm(formula = Uniquepageviews ~ Visits, data = data, family = "poisson")
+> summary(log_model)
+
+Call:
+glm(formula = Uniquepageviews ~ Visits, family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-11.3946   -0.1116   -0.1116    0.0046    6.3700  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -0.004604   0.005616   -0.82    0.412    
+Visits       0.114183   0.001535   74.37   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 4852.6  on 32108  degrees of freedom
+Residual deviance: 2844.6  on 32107  degrees of freedom
+AIC: 68899
+
+Number of Fisher Scoring iterations: 6
+
+> remove(log_model)
+> #######################################################################################################
+> #Find out the probable factors from the dataset, which could affect the exits. Exit Page Analysis is 
+> #usually required to get an idea about why a user leaves the website for a session and moves on to
+> #another one. Please keep in mind that exits should not be confused with bounces.
+> #######################################################################################################
+> library(corrplot)
+> corrplot(cor(data[,-c(3,4)]))
+> model.matrix(object = Exits ~ ., data = data) -> matrix
+> matrix = matrix[,-1] #remove intercept column as this will not be required
+> matrix = as.data.frame(matrix)
+> data = cbind(data$Exits, matrix) #add the Exits column to the matrix
+> names(data)[1] = "Exits"
+> corrplot(cor(data))
+> cor(data$Exits,data)
+     Exits   Bounces ContinentAS  ContinentEU ContinentN.America ContinentOC   ContinentSA Sourcegroupfacebook
+[1,]     1 0.8249116 0.001192882 -0.005698795        0.005199722 -0.00102122 -0.0005094974          0.01310045
+     Sourcegroupgoogle SourcegroupOthers Sourcegrouppublic.tableausoftware.com Sourcegroupreddit.com
+[1,]         0.0356793       -0.04697426                           -0.07789943           0.007465712
+     Sourcegroupt.co Sourcegrouptableausoftware.com Sourcegroupvisualisingdata.com  Timeinpage Uniquepageviews
+[1,]     0.009000093                    -0.06868438                    -0.04257408 0.001324776       0.7911294
+       Visits
+[1,] 0.800979
+> log_model = glm(formula = Exits ~ ., data = data, family = "poisson")
+> summary(log_model)
+
+Call:
+glm(formula = Exits ~ ., family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-14.2939   -0.0820   -0.0441    0.0833   11.4311  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -1.694e-01  6.055e-02  -2.798  0.00515 ** 
+Bounces                                4.370e-01  1.419e-02  30.802  < 2e-16 ***
+ContinentAS                            2.722e-02  6.220e-02   0.438  0.66172    
+ContinentEU                            2.982e-02  6.087e-02   0.490  0.62418    
+ContinentN.America                     3.531e-02  5.988e-02   0.590  0.55541    
+ContinentOC                            2.113e-02  6.588e-02   0.321  0.74844    
+ContinentSA                            2.701e-02  7.085e-02   0.381  0.70298    
+Sourcegroupfacebook                    4.157e-02  1.012e-01   0.411  0.68124    
+Sourcegroupgoogle                     -3.167e-02  1.528e-02  -2.072  0.03827 *  
+SourcegroupOthers                     -9.571e-02  1.912e-02  -5.006 5.57e-07 ***
+Sourcegrouppublic.tableausoftware.com -1.784e-01  3.619e-02  -4.929 8.28e-07 ***
+Sourcegroupreddit.com                 -4.367e-02  4.314e-02  -1.012  0.31141    
+Sourcegroupt.co                       -3.329e-02  2.487e-02  -1.339  0.18066    
+Sourcegrouptableausoftware.com        -1.512e-01  2.670e-02  -5.664 1.48e-08 ***
+Sourcegroupvisualisingdata.com        -1.597e-01  3.924e-02  -4.070 4.71e-05 ***
+Timeinpage                             3.928e-05  9.483e-06   4.142 3.45e-05 ***
+Uniquepageviews                       -3.356e-01  1.748e-02 -19.204  < 2e-16 ***
+Visits                                 1.136e-01  2.108e-02   5.390 7.04e-08 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 16024  on 32108  degrees of freedom
+Residual deviance: 11451  on 32091  degrees of freedom
+AIC: 65167
+
+Number of Fisher Scoring iterations: 8
+
+> lm_tuned = step(object = log_model, direction = "both")
+Start:  AIC=65167.25
+Exits ~ Bounces + ContinentAS + ContinentEU + ContinentN.America + 
+    ContinentOC + ContinentSA + Sourcegroupfacebook + Sourcegroupgoogle + 
+    SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegroupt.co + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits
+
+                                        Df Deviance   AIC
+- ContinentOC                            1    11451 65165
+- ContinentSA                            1    11451 65165
+- Sourcegroupfacebook                    1    11451 65165
+- ContinentAS                            1    11451 65165
+- ContinentEU                            1    11451 65165
+- ContinentN.America                     1    11451 65166
+- Sourcegroupreddit.com                  1    11452 65166
+- Sourcegroupt.co                        1    11452 65167
+<none>                                        11451 65167
+- Sourcegroupgoogle                      1    11455 65170
+- Timeinpage                             1    11462 65177
+- Sourcegroupvisualisingdata.com         1    11468 65183
+- SourcegroupOthers                      1    11476 65190
+- Sourcegrouppublic.tableausoftware.com  1    11476 65191
+- Visits                                 1    11480 65194
+- Sourcegrouptableausoftware.com         1    11484 65198
+- Uniquepageviews                        1    11854 65569
+- Bounces                                1    12813 66528
+
+Step:  AIC=65165.36
+Exits ~ Bounces + ContinentAS + ContinentEU + ContinentN.America + 
+    ContinentSA + Sourcegroupfacebook + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegroupreddit.com + 
+    Sourcegroupt.co + Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+- ContinentSA                            1    11451 65163
+- ContinentAS                            1    11451 65163
+- Sourcegroupfacebook                    1    11451 65164
+- ContinentEU                            1    11451 65164
+- ContinentN.America                     1    11451 65164
+- Sourcegroupreddit.com                  1    11452 65164
+- Sourcegroupt.co                        1    11453 65165
+<none>                                        11451 65165
++ ContinentOC                            1    11451 65167
+- Sourcegroupgoogle                      1    11455 65168
+- Timeinpage                             1    11462 65175
+- Sourcegroupvisualisingdata.com         1    11468 65181
+- SourcegroupOthers                      1    11476 65189
+- Sourcegrouppublic.tableausoftware.com  1    11476 65189
+- Visits                                 1    11480 65192
+- Sourcegrouptableausoftware.com         1    11484 65196
+- Uniquepageviews                        1    11854 65567
+- Bounces                                1    12813 66526
+
+Step:  AIC=65163.4
+Exits ~ Bounces + ContinentAS + ContinentEU + ContinentN.America + 
+    Sourcegroupfacebook + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegroupreddit.com + 
+    Sourcegroupt.co + Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+- ContinentAS                            1    11451 65161
+- ContinentEU                            1    11451 65162
+- Sourcegroupfacebook                    1    11451 65162
+- ContinentN.America                     1    11451 65162
+- Sourcegroupreddit.com                  1    11452 65162
+- Sourcegroupt.co                        1    11453 65163
+<none>                                        11451 65163
++ ContinentSA                            1    11451 65165
++ ContinentOC                            1    11451 65165
+- Sourcegroupgoogle                      1    11455 65166
+- Timeinpage                             1    11462 65173
+- Sourcegroupvisualisingdata.com         1    11468 65179
+- SourcegroupOthers                      1    11476 65187
+- Sourcegrouppublic.tableausoftware.com  1    11476 65187
+- Visits                                 1    11480 65190
+- Sourcegrouptableausoftware.com         1    11484 65195
+- Uniquepageviews                        1    11854 65565
+- Bounces                                1    12813 66524
+
+Step:  AIC=65161.46
+Exits ~ Bounces + ContinentEU + ContinentN.America + Sourcegroupfacebook + 
+    Sourcegroupgoogle + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegroupt.co + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits
+
+                                        Df Deviance   AIC
+- ContinentEU                            1    11451 65160
+- Sourcegroupfacebook                    1    11451 65160
+- ContinentN.America                     1    11451 65160
+- Sourcegroupreddit.com                  1    11452 65161
+- Sourcegroupt.co                        1    11453 65161
+<none>                                        11451 65161
++ ContinentAS                            1    11451 65163
++ ContinentOC                            1    11451 65163
++ ContinentSA                            1    11451 65163
+- Sourcegroupgoogle                      1    11455 65164
+- Timeinpage                             1    11462 65171
+- Sourcegroupvisualisingdata.com         1    11468 65177
+- SourcegroupOthers                      1    11476 65185
+- Sourcegrouppublic.tableausoftware.com  1    11476 65185
+- Visits                                 1    11480 65188
+- Sourcegrouptableausoftware.com         1    11484 65193
+- Uniquepageviews                        1    11854 65563
+- Bounces                                1    12813 66522
+
+Step:  AIC=65159.55
+Exits ~ Bounces + ContinentN.America + Sourcegroupfacebook + 
+    Sourcegroupgoogle + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegroupt.co + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits
+
+                                        Df Deviance   AIC
+- Sourcegroupfacebook                    1    11451 65158
+- ContinentN.America                     1    11451 65158
+- Sourcegroupreddit.com                  1    11452 65159
+- Sourcegroupt.co                        1    11453 65159
+<none>                                        11451 65160
++ ContinentEU                            1    11451 65161
++ ContinentOC                            1    11451 65161
++ ContinentAS                            1    11451 65162
++ ContinentSA                            1    11451 65162
+- Sourcegroupgoogle                      1    11455 65162
+- Timeinpage                             1    11462 65169
+- Sourcegroupvisualisingdata.com         1    11468 65175
+- SourcegroupOthers                      1    11476 65183
+- Sourcegrouppublic.tableausoftware.com  1    11476 65183
+- Visits                                 1    11480 65187
+- Sourcegrouptableausoftware.com         1    11484 65191
+- Uniquepageviews                        1    11854 65561
+- Bounces                                1    12813 66520
+
+Step:  AIC=65157.72
+Exits ~ Bounces + ContinentN.America + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegroupreddit.com + 
+    Sourcegroupt.co + Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+- ContinentN.America                     1    11452 65156
+- Sourcegroupreddit.com                  1    11452 65157
+- Sourcegroupt.co                        1    11453 65158
+<none>                                        11451 65158
++ Sourcegroupfacebook                    1    11451 65160
++ ContinentEU                            1    11451 65160
++ ContinentOC                            1    11451 65160
++ ContinentAS                            1    11451 65160
++ ContinentSA                            1    11451 65160
+- Sourcegroupgoogle                      1    11456 65160
+- Timeinpage                             1    11462 65167
+- Sourcegroupvisualisingdata.com         1    11468 65173
+- SourcegroupOthers                      1    11477 65181
+- Sourcegrouppublic.tableausoftware.com  1    11477 65181
+- Visits                                 1    11480 65185
+- Sourcegrouptableausoftware.com         1    11485 65189
+- Uniquepageviews                        1    11855 65560
+- Bounces                                1    12813 66518
+
+Step:  AIC=65156.16
+Exits ~ Bounces + Sourcegroupgoogle + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegroupt.co + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits
+
+                                        Df Deviance   AIC
+- Sourcegroupreddit.com                  1    11453 65155
+- Sourcegroupt.co                        1    11453 65156
+<none>                                        11452 65156
++ ContinentN.America                     1    11451 65158
++ Sourcegroupfacebook                    1    11451 65158
++ ContinentOC                            1    11451 65158
++ ContinentAS                            1    11452 65158
++ ContinentEU                            1    11452 65158
++ ContinentSA                            1    11452 65158
+- Sourcegroupgoogle                      1    11456 65159
+- Timeinpage                             1    11463 65165
+- Sourcegroupvisualisingdata.com         1    11470 65172
+- Sourcegrouppublic.tableausoftware.com  1    11477 65180
+- SourcegroupOthers                      1    11478 65180
+- Visits                                 1    11480 65183
+- Sourcegrouptableausoftware.com         1    11485 65188
+- Uniquepageviews                        1    11855 65558
+- Bounces                                1    12814 66517
+
+Step:  AIC=65155.2
+Exits ~ Bounces + Sourcegroupgoogle + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupt.co + Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+- Sourcegroupt.co                        1    11454 65155
+<none>                                        11453 65155
++ Sourcegroupreddit.com                  1    11452 65156
++ ContinentN.America                     1    11452 65157
++ Sourcegroupfacebook                    1    11452 65157
++ ContinentOC                            1    11452 65157
++ ContinentAS                            1    11452 65157
++ ContinentEU                            1    11453 65157
++ ContinentSA                            1    11453 65157
+- Sourcegroupgoogle                      1    11457 65157
+- Timeinpage                             1    11464 65165
+- Sourcegroupvisualisingdata.com         1    11470 65171
+- Sourcegrouppublic.tableausoftware.com  1    11477 65178
+- SourcegroupOthers                      1    11478 65179
+- Visits                                 1    11481 65182
+- Sourcegrouptableausoftware.com         1    11485 65186
+- Uniquepageviews                        1    11856 65556
+- Bounces                                1    12815 66516
+
+Step:  AIC=65154.75
+Exits ~ Bounces + Sourcegroupgoogle + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+<none>                                        11454 65155
++ Sourcegroupt.co                        1    11453 65155
+- Sourcegroupgoogle                      1    11457 65156
++ Sourcegroupreddit.com                  1    11453 65156
++ ContinentN.America                     1    11454 65156
++ Sourcegroupfacebook                    1    11454 65156
++ ContinentOC                            1    11454 65157
++ ContinentEU                            1    11454 65157
++ ContinentAS                            1    11454 65157
++ ContinentSA                            1    11454 65157
+- Timeinpage                             1    11466 65164
+- Sourcegroupvisualisingdata.com         1    11470 65169
+- Sourcegrouppublic.tableausoftware.com  1    11478 65176
+- SourcegroupOthers                      1    11478 65177
+- Visits                                 1    11483 65182
+- Sourcegrouptableausoftware.com         1    11485 65184
+- Uniquepageviews                        1    11857 65556
+- Bounces                                1    12818 66517
+> summary(lm_tuned)
+
+Call:
+glm(formula = Exits ~ Bounces + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits, family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-14.3119   -0.0699   -0.0460    0.0819   11.4315  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -1.463e-01  1.086e-02 -13.475  < 2e-16 ***
+Bounces                                4.371e-01  1.418e-02  30.820  < 2e-16 ***
+Sourcegroupgoogle                     -2.344e-02  1.390e-02  -1.687   0.0917 .  
+SourcegroupOthers                     -8.744e-02  1.803e-02  -4.851 1.23e-06 ***
+Sourcegrouppublic.tableausoftware.com -1.682e-01  3.561e-02  -4.724 2.32e-06 ***
+Sourcegrouptableausoftware.com        -1.421e-01  2.597e-02  -5.473 4.42e-08 ***
+Sourcegroupvisualisingdata.com        -1.521e-01  3.863e-02  -3.938 8.23e-05 ***
+Timeinpage                             3.921e-05  9.451e-06   4.149 3.34e-05 ***
+Uniquepageviews                       -3.348e-01  1.745e-02 -19.192  < 2e-16 ***
+Visits                                 1.131e-01  2.106e-02   5.371 7.83e-08 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 16024  on 32108  degrees of freedom
+Residual deviance: 11454  on 32099  degrees of freedom
+AIC: 65155
+
+Number of Fisher Scoring iterations: 8
+
+> #AIC: 65155
+> log_model_p2 = glm(formula = Exits ~ Bounces + SourcegroupOthers + 
++                   Sourcegrouppublic.tableausoftware.com + Sourcegroupvisualisingdata.com +
++                   Timeinpage + Visits, data = data, family = "poisson")
+> summary(log_model_p2)
+
+Call:
+glm(formula = Exits ~ Bounces + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Visits, family = "poisson", 
+    data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-15.9147    0.0001    0.0001    0.1667    6.4469  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -2.232e-01  7.060e-03 -31.615  < 2e-16 ***
+Bounces                                4.440e-01  1.418e-02  31.313  < 2e-16 ***
+SourcegroupOthers                     -7.691e-02  1.639e-02  -4.692 2.70e-06 ***
+Sourcegrouppublic.tableausoftware.com -2.355e-01  3.452e-02  -6.823 8.89e-12 ***
+Sourcegroupvisualisingdata.com        -1.713e-01  3.785e-02  -4.527 5.98e-06 ***
+Timeinpage                             2.576e-05  1.227e-05   2.099   0.0358 *  
+Visits                                -2.208e-01  1.221e-02 -18.092  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 16024  on 32108  degrees of freedom
+Residual deviance: 11911  on 32102  degrees of freedom
+AIC: 65605
+
+Number of Fisher Scoring iterations: 9
+
+> lm_tuned = step(object = log_model_p2, direction = "both")
+Start:  AIC=65605.12
+Exits ~ Bounces + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Visits
+
+                                        Df Deviance   AIC
+<none>                                        11910 65605
+- Timeinpage                             1    11914 65607
+- Sourcegroupvisualisingdata.com         1    11932 65625
+- SourcegroupOthers                      1    11933 65626
+- Sourcegrouppublic.tableausoftware.com  1    11961 65653
+- Visits                                 1    12378 66070
+- Bounces                                1    13368 67060
+> summary(lm_tuned)
+
+Call:
+glm(formula = Exits ~ Bounces + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Visits, family = "poisson", 
+    data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-15.9147    0.0001    0.0001    0.1667    6.4469  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -2.232e-01  7.060e-03 -31.615  < 2e-16 ***
+Bounces                                4.440e-01  1.418e-02  31.313  < 2e-16 ***
+SourcegroupOthers                     -7.691e-02  1.639e-02  -4.692 2.70e-06 ***
+Sourcegrouppublic.tableausoftware.com -2.355e-01  3.452e-02  -6.823 8.89e-12 ***
+Sourcegroupvisualisingdata.com        -1.713e-01  3.785e-02  -4.527 5.98e-06 ***
+Timeinpage                             2.576e-05  1.227e-05   2.099   0.0358 *  
+Visits                                -2.208e-01  1.221e-02 -18.092  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 16024  on 32108  degrees of freedom
+Residual deviance: 11911  on 32102  degrees of freedom
+AIC: 65605
+
+Number of Fisher Scoring iterations: 9
+
+> library(car)
+> vif(lm_tuned)
+                              Bounces                     SourcegroupOthers 
+                            53.445745                              1.015453 
+Sourcegrouppublic.tableausoftware.com        Sourcegroupvisualisingdata.com 
+                             1.013524                              1.007222 
+                           Timeinpage                                Visits 
+                             1.105021                             54.119730 
+> #Removing Visits from the model
+> log_model_p3 = glm(formula = Exits ~ Bounces + SourcegroupOthers + 
++                      Sourcegrouppublic.tableausoftware.com + Sourcegroupvisualisingdata.com +
++                      Timeinpage, data = data, family = "poisson")
+> summary(log_model_p3)
+
+Call:
+glm(formula = Exits ~ Bounces + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage, family = "poisson", 
+    data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-12.4617    0.0333    0.0333    0.2072    5.0787  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -2.147e-01  7.037e-03 -30.506  < 2e-16 ***
+Bounces                                1.812e-01  2.001e-03  90.541  < 2e-16 ***
+SourcegroupOthers                     -8.387e-02  1.639e-02  -5.117 3.10e-07 ***
+Sourcegrouppublic.tableausoftware.com -2.745e-01  3.449e-02  -7.960 1.72e-15 ***
+Sourcegroupvisualisingdata.com        -1.846e-01  3.784e-02  -4.879 1.07e-06 ***
+Timeinpage                            -8.320e-05  2.243e-05  -3.709 0.000208 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 16024  on 32108  degrees of freedom
+Residual deviance: 12378  on 32103  degrees of freedom
+AIC: 66070
+
+Number of Fisher Scoring iterations: 8
+
+> lm_tuned = step(object = log_model_p3, direction = "both")
+Start:  AIC=66070.33
+Exits ~ Bounces + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage
+
+                                        Df Deviance   AIC
+<none>                                        12378 66070
+- Timeinpage                             1    12394 66084
+- Sourcegroupvisualisingdata.com         1    12403 66094
+- SourcegroupOthers                      1    12404 66095
+- Sourcegrouppublic.tableausoftware.com  1    12447 66137
+- Bounces                                1    15812 69503
+> summary(lm_tuned)
+
+Call:
+glm(formula = Exits ~ Bounces + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage, family = "poisson", 
+    data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-12.4617    0.0333    0.0333    0.2072    5.0787  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -2.147e-01  7.037e-03 -30.506  < 2e-16 ***
+Bounces                                1.812e-01  2.001e-03  90.541  < 2e-16 ***
+SourcegroupOthers                     -8.387e-02  1.639e-02  -5.117 3.10e-07 ***
+Sourcegrouppublic.tableausoftware.com -2.745e-01  3.449e-02  -7.960 1.72e-15 ***
+Sourcegroupvisualisingdata.com        -1.846e-01  3.784e-02  -4.879 1.07e-06 ***
+Timeinpage                            -8.320e-05  2.243e-05  -3.709 0.000208 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 16024  on 32108  degrees of freedom
+Residual deviance: 12378  on 32103  degrees of freedom
+AIC: 66070
+
+Number of Fisher Scoring iterations: 8
+
+> log_model_p4 = glm(formula = Exits ~ SourcegroupOthers + 
++                      Sourcegrouppublic.tableausoftware.com + Sourcegroupvisualisingdata.com +
++                      Timeinpage + Visits, data = data, family = "poisson")
+> summary(log_model_p4)
+
+Call:
+glm(formula = Exits ~ SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Visits, family = "poisson", 
+    data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-14.3785    0.0577    0.0577    0.1515    5.0713  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -1.832e-01  6.983e-03 -26.242  < 2e-16 ***
+SourcegroupOthers                     -9.716e-02  1.638e-02  -5.933 2.98e-09 ***
+Sourcegrouppublic.tableausoftware.com -3.190e-01  3.446e-02  -9.256  < 2e-16 ***
+Sourcegroupvisualisingdata.com        -2.054e-01  3.784e-02  -5.428 5.71e-08 ***
+Timeinpage                            -1.298e-04  2.321e-05  -5.594 2.21e-08 ***
+Visits                                 1.250e-01  1.561e-03  80.077  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 16024  on 32108  degrees of freedom
+Residual deviance: 13368  on 32103  degrees of freedom
+AIC: 67060
+
+Number of Fisher Scoring iterations: 6
+
+> lm_tuned = step(object = log_model_p4, direction = "both")
+Start:  AIC=67060.39
+Exits ~ SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Visits
+
+                                        Df Deviance   AIC
+<none>                                        13368 67060
+- Sourcegroupvisualisingdata.com         1    13399 67090
+- SourcegroupOthers                      1    13404 67094
+- Timeinpage                             1    13405 67095
+- Sourcegrouppublic.tableausoftware.com  1    13462 67153
+- Visits                                 1    15812 69503
+> summary(lm_tuned)
+
+Call:
+glm(formula = Exits ~ SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Visits, family = "poisson", 
+    data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-14.3785    0.0577    0.0577    0.1515    5.0713  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -1.832e-01  6.983e-03 -26.242  < 2e-16 ***
+SourcegroupOthers                     -9.716e-02  1.638e-02  -5.933 2.98e-09 ***
+Sourcegrouppublic.tableausoftware.com -3.190e-01  3.446e-02  -9.256  < 2e-16 ***
+Sourcegroupvisualisingdata.com        -2.054e-01  3.784e-02  -5.428 5.71e-08 ***
+Timeinpage                            -1.298e-04  2.321e-05  -5.594 2.21e-08 ***
+Visits                                 1.250e-01  1.561e-03  80.077  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 16024  on 32108  degrees of freedom
+Residual deviance: 13368  on 32103  degrees of freedom
+AIC: 67060
+
+Number of Fisher Scoring iterations: 6
+
+> remove(lm_tuned, log_model, log_model_p2, log_model_p3, log_model_p4, matrix)
+> ################################################################################################
+> #Every site wants to increase the time on page for a visitor. This increases the chances of the
+> #visitor understanding the site content better and hence there are more chances of a transaction
+> #taking place. Find the variables which possibly have an effect on the time on page
+> ################################################################################################
+> cor(data$Timeinpage,data)
+           Exits    Bounces ContinentAS ContinentEU ContinentN.America  ContinentOC ContinentSA
+[1,] 0.001324776 -0.1091057 -0.01035275 -0.01632806         0.01429886 -0.003699678  0.02593497
+     Sourcegroupfacebook Sourcegroupgoogle SourcegroupOthers Sourcegrouppublic.tableausoftware.com
+[1,]        -0.002171484       -0.01114982      -0.003186207                            0.03252197
+     Sourcegroupreddit.com Sourcegroupt.co Sourcegrouptableausoftware.com Sourcegroupvisualisingdata.com
+[1,]          -0.008505078    -0.002269107                     0.01269197                   4.033019e-05
+     Timeinpage Uniquepageviews     Visits
+[1,]          1       0.1145925 0.06664967
+> log_model = glm(formula = Timeinpage ~ ., data = data, family = "poisson")
+> summary(log_model)
+
+Call:
+glm(formula = Timeinpage ~ ., family = "poisson", data = data)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-296.43    -7.59    -7.00    -6.45   566.76  
+
+Coefficients:
+                                       Estimate Std. Error   z value Pr(>|z|)    
+(Intercept)                            3.928227   0.007681   511.397  < 2e-16 ***
+Exits                                  0.488990   0.001238   395.121  < 2e-16 ***
+Bounces                               -2.419410   0.001617 -1496.331  < 2e-16 ***
+ContinentAS                            0.098248   0.007853    12.511  < 2e-16 ***
+ContinentEU                            0.042551   0.007685     5.537 3.07e-08 ***
+ContinentN.America                     0.205591   0.007564    27.180  < 2e-16 ***
+ContinentOC                            0.243695   0.008223    29.635  < 2e-16 ***
+ContinentSA                            0.905778   0.008128   111.438  < 2e-16 ***
+Sourcegroupfacebook                   -0.108573   0.013868    -7.829 4.91e-15 ***
+Sourcegroupgoogle                      0.028792   0.001855    15.524  < 2e-16 ***
+SourcegroupOthers                      0.018290   0.002188     8.360  < 2e-16 ***
+Sourcegrouppublic.tableausoftware.com  0.227222   0.002777    81.818  < 2e-16 ***
+Sourcegroupreddit.com                 -0.057416   0.005930    -9.682  < 2e-16 ***
+Sourcegroupt.co                        0.181183   0.002912    62.223  < 2e-16 ***
+Sourcegrouptableausoftware.com         0.149872   0.002601    57.628  < 2e-16 ***
+Sourcegroupvisualisingdata.com         0.075709   0.004031    18.781  < 2e-16 ***
+Uniquepageviews                       -0.155004   0.000982  -157.844  < 2e-16 ***
+Visits                                 1.131781   0.001390   814.271  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 10889622  on 32108  degrees of freedom
+Residual deviance:  7544087  on 32091  degrees of freedom
+AIC: 7601395
+
+Number of Fisher Scoring iterations: 9
+
+> lm_tuned = step(object = log_model, direction = "both")
+Start:  AIC=7601395
+Timeinpage ~ Exits + Bounces + ContinentAS + ContinentEU + ContinentN.America + 
+    ContinentOC + ContinentSA + Sourcegroupfacebook + Sourcegroupgoogle + 
+    SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegroupt.co + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Uniquepageviews + Visits
+
+                                        Df Deviance     AIC
+<none>                                      7544087 7601395
+- ContinentEU                            1  7544118 7601424
+- Sourcegroupfacebook                    1  7544151 7601457
+- SourcegroupOthers                      1  7544157 7601463
+- Sourcegroupreddit.com                  1  7544183 7601488
+- ContinentAS                            1  7544248 7601554
+- Sourcegroupgoogle                      1  7544329 7601635
+- Sourcegroupvisualisingdata.com         1  7544434 7601739
+- ContinentN.America                     1  7544878 7602183
+- ContinentOC                            1  7545014 7602320
+- Sourcegrouptableausoftware.com         1  7547345 7604651
+- Sourcegroupt.co                        1  7547840 7605146
+- Sourcegrouppublic.tableausoftware.com  1  7550555 7607860
+- ContinentSA                            1  7559300 7616605
+- Uniquepageviews                        1  7569942 7627248
+- Exits                                  1  7692382 7749688
+- Visits                                 1  8308116 8365422
+- Bounces                                1  9941491 9998797
+> summary(lm_tuned)
+
+Call:
+glm(formula = Timeinpage ~ Exits + Bounces + ContinentAS + ContinentEU + 
+    ContinentN.America + ContinentOC + ContinentSA + Sourcegroupfacebook + 
+    Sourcegroupgoogle + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegroupt.co + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Uniquepageviews + Visits, 
+    family = "poisson", data = data)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-296.43    -7.59    -7.00    -6.45   566.76  
+
+Coefficients:
+                                       Estimate Std. Error   z value Pr(>|z|)    
+(Intercept)                            3.928227   0.007681   511.397  < 2e-16 ***
+Exits                                  0.488990   0.001238   395.121  < 2e-16 ***
+Bounces                               -2.419410   0.001617 -1496.331  < 2e-16 ***
+ContinentAS                            0.098248   0.007853    12.511  < 2e-16 ***
+ContinentEU                            0.042551   0.007685     5.537 3.07e-08 ***
+ContinentN.America                     0.205591   0.007564    27.180  < 2e-16 ***
+ContinentOC                            0.243695   0.008223    29.635  < 2e-16 ***
+ContinentSA                            0.905778   0.008128   111.438  < 2e-16 ***
+Sourcegroupfacebook                   -0.108573   0.013868    -7.829 4.91e-15 ***
+Sourcegroupgoogle                      0.028792   0.001855    15.524  < 2e-16 ***
+SourcegroupOthers                      0.018290   0.002188     8.360  < 2e-16 ***
+Sourcegrouppublic.tableausoftware.com  0.227222   0.002777    81.818  < 2e-16 ***
+Sourcegroupreddit.com                 -0.057416   0.005930    -9.682  < 2e-16 ***
+Sourcegroupt.co                        0.181183   0.002912    62.223  < 2e-16 ***
+Sourcegrouptableausoftware.com         0.149872   0.002601    57.628  < 2e-16 ***
+Sourcegroupvisualisingdata.com         0.075709   0.004031    18.781  < 2e-16 ***
+Uniquepageviews                       -0.155004   0.000982  -157.844  < 2e-16 ***
+Visits                                 1.131781   0.001390   814.271  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 10889622  on 32108  degrees of freedom
+Residual deviance:  7544087  on 32091  degrees of freedom
+AIC: 7601395
+
+Number of Fisher Scoring iterations: 9
+
+> log_model_p2 = glm(formula = Timeinpage ~ Exits + Bounces + ContinentN.America + ContinentSA +
++                      Sourcegroupfacebook + Sourcegrouppublic.tableausoftware.com + 
++                      Sourcegroupreddit.com + Sourcegrouptableausoftware.com + 
++                      Sourcegroupvisualisingdata.com + Visits, data = data, family = "poisson")
+> summary(log_model_p2)
+
+Call:
+glm(formula = Timeinpage ~ Exits + Bounces + ContinentN.America + 
+    ContinentSA + Sourcegroupfacebook + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Visits, family = "poisson", 
+    data = data)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-341.65    -7.33    -6.96    -6.59   571.85  
+
+Coefficients:
+                                        Estimate Std. Error   z value Pr(>|z|)    
+(Intercept)                            4.0734356  0.0013674  2978.880  < 2e-16 ***
+Exits                                  0.4382445  0.0012104   362.075  < 2e-16 ***
+Bounces                               -2.3712710  0.0016369 -1448.660  < 2e-16 ***
+ContinentN.America                     0.1096034  0.0014721    74.452  < 2e-16 ***
+ContinentSA                            0.8166005  0.0033263   245.501  < 2e-16 ***
+Sourcegroupfacebook                   -0.0845087  0.0138074    -6.121 9.33e-10 ***
+Sourcegrouppublic.tableausoftware.com  0.2032100  0.0024943    81.471  < 2e-16 ***
+Sourcegroupreddit.com                 -0.0935245  0.0057982   -16.130  < 2e-16 ***
+Sourcegrouptableausoftware.com         0.1039734  0.0022862    45.479  < 2e-16 ***
+Sourcegroupvisualisingdata.com         0.0070385  0.0038275     1.839   0.0659 .  
+Visits                                 0.9376057  0.0006925  1353.893  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 10889622  on 32108  degrees of freedom
+Residual deviance:  7577453  on 32098  degrees of freedom
+AIC: 7634747
+
+Number of Fisher Scoring iterations: 9
+
+> lm_tuned = step(object = log_model_p2, direction = "both")
+Start:  AIC=7634747
+Timeinpage ~ Exits + Bounces + ContinentN.America + ContinentSA + 
+    Sourcegroupfacebook + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Visits
+
+                                        Df Deviance      AIC
+<none>                                      7577453  7634747
+- Sourcegroupvisualisingdata.com         1  7577457  7634749
+- Sourcegroupfacebook                    1  7577492  7634784
+- Sourcegroupreddit.com                  1  7577722  7635013
+- Sourcegrouptableausoftware.com         1  7579468  7636759
+- ContinentN.America                     1  7583065  7640357
+- Sourcegrouppublic.tableausoftware.com  1  7583753  7641045
+- ContinentSA                            1  7626816  7684108
+- Exits                                  1  7703744  7761036
+- Visits                                 1  8836650  8893941
+- Bounces                                1 10178346 10235638
+> summary(lm_tuned)
+
+Call:
+glm(formula = Timeinpage ~ Exits + Bounces + ContinentN.America + 
+    ContinentSA + Sourcegroupfacebook + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Visits, family = "poisson", 
+    data = data)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-341.65    -7.33    -6.96    -6.59   571.85  
+
+Coefficients:
+                                        Estimate Std. Error   z value Pr(>|z|)    
+(Intercept)                            4.0734356  0.0013674  2978.880  < 2e-16 ***
+Exits                                  0.4382445  0.0012104   362.075  < 2e-16 ***
+Bounces                               -2.3712710  0.0016369 -1448.660  < 2e-16 ***
+ContinentN.America                     0.1096034  0.0014721    74.452  < 2e-16 ***
+ContinentSA                            0.8166005  0.0033263   245.501  < 2e-16 ***
+Sourcegroupfacebook                   -0.0845087  0.0138074    -6.121 9.33e-10 ***
+Sourcegrouppublic.tableausoftware.com  0.2032100  0.0024943    81.471  < 2e-16 ***
+Sourcegroupreddit.com                 -0.0935245  0.0057982   -16.130  < 2e-16 ***
+Sourcegrouptableausoftware.com         0.1039734  0.0022862    45.479  < 2e-16 ***
+Sourcegroupvisualisingdata.com         0.0070385  0.0038275     1.839   0.0659 .  
+Visits                                 0.9376057  0.0006925  1353.893  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 10889622  on 32108  degrees of freedom
+Residual deviance:  7577453  on 32098  degrees of freedom
+AIC: 7634747
+
+Number of Fisher Scoring iterations: 9
+
+> #Check for multicolinearity
+> vif(lm_tuned)
+                                Exits                               Bounces 
+                             3.353942                              1.906979 
+                   ContinentN.America                           ContinentSA 
+                             1.140267                              1.102637 
+                  Sourcegroupfacebook Sourcegrouppublic.tableausoftware.com 
+                             1.001116                              1.043920 
+                Sourcegroupreddit.com        Sourcegrouptableausoftware.com 
+                             1.005728                              1.029177 
+       Sourcegroupvisualisingdata.com                                Visits 
+                             1.015809                              3.138212 
+> remove(lm_tuned, log_model, log_model_p2)
+> ################################################################################################
+> #A high bounce rate is a cause of alarm for websites which depend on visitor engagement. Help
+> #the team in determining the factors that are impacting the bounce 
+> ################################################################################################
+> cor(data$Bounces,data)
+         Exits Bounces ContinentAS  ContinentEU ContinentN.America ContinentOC ContinentSA Sourcegroupfacebook
+[1,] 0.8249116       1 0.008409254 0.0003105857       -0.009337317 0.008125388 0.001069773          0.01514085
+     Sourcegroupgoogle SourcegroupOthers Sourcegrouppublic.tableausoftware.com Sourcegroupreddit.com
+[1,]         0.0459563       -0.04819909                            -0.1125607            0.01788437
+     Sourcegroupt.co Sourcegrouptableausoftware.com Sourcegroupvisualisingdata.com Timeinpage Uniquepageviews
+[1,]      0.02058084                    -0.08307701                    -0.04480097 -0.1091057       0.6591015
+        Visits
+[1,] 0.8193432
+> log_model = glm(formula = Bounces ~ ., data = data, family = "poisson")
+Warning message:
+glm.fit: fitted rates numerically 0 occurred 
+> summary(log_model)
+
+Call:
+glm(formula = Bounces ~ ., family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-17.6942   -0.2591   -0.0093    0.0827   18.7808  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -2.210e-01  6.715e-02  -3.291 0.000997 ***
+Exits                                  1.180e+00  3.386e-02  34.864  < 2e-16 ***
+ContinentAS                            8.699e-03  6.900e-02   0.126 0.899677    
+ContinentEU                           -7.685e-04  6.755e-02  -0.011 0.990923    
+ContinentN.America                     2.342e-02  6.643e-02   0.353 0.724443    
+ContinentOC                            2.807e-02  7.300e-02   0.384 0.700628    
+ContinentSA                            3.177e-02  7.877e-02   0.403 0.686676    
+Sourcegroupfacebook                   -4.762e-02  1.099e-01  -0.433 0.664813    
+Sourcegroupgoogle                     -1.074e-01  1.701e-02  -6.315 2.70e-10 ***
+SourcegroupOthers                     -1.083e-01  2.163e-02  -5.007 5.53e-07 ***
+Sourcegrouppublic.tableausoftware.com -2.942e-01  4.901e-02  -6.002 1.95e-09 ***
+Sourcegroupreddit.com                 -3.669e-02  4.682e-02  -0.784 0.433256    
+Sourcegroupt.co                        9.043e-03  2.745e-02   0.329 0.741786    
+Sourcegrouptableausoftware.com        -1.533e-01  3.168e-02  -4.839 1.30e-06 ***
+Sourcegroupvisualisingdata.com        -1.187e-01  4.589e-02  -2.586 0.009717 ** 
+Timeinpage                            -8.946e-04  5.443e-05 -16.436  < 2e-16 ***
+Uniquepageviews                       -3.198e+00  5.835e-02 -54.809  < 2e-16 ***
+Visits                                 2.240e+00  5.210e-02  42.993  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 23328  on 32108  degrees of freedom
+Residual deviance: 10297  on 32091  degrees of freedom
+AIC: 52684
+
+Number of Fisher Scoring iterations: 7
+
+> lm_tuned = step(object = log_model, direction = "both")
+Start:  AIC=52683.97
+Bounces ~ Exits + ContinentAS + ContinentEU + ContinentN.America + 
+    ContinentOC + ContinentSA + Sourcegroupfacebook + Sourcegroupgoogle + 
+    SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegroupt.co + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits
+
+                                        Df Deviance   AIC
+- ContinentEU                            1    10297 52682
+- ContinentAS                            1    10297 52682
+- Sourcegroupt.co                        1    10297 52682
+- ContinentN.America                     1    10298 52682
+- ContinentOC                            1    10298 52682
+- ContinentSA                            1    10298 52682
+- Sourcegroupfacebook                    1    10298 52682
+- Sourcegroupreddit.com                  1    10298 52683
+<none>                                        10297 52684
+- Sourcegroupvisualisingdata.com         1    10304 52689
+- Sourcegrouptableausoftware.com         1    10322 52706
+- SourcegroupOthers                      1    10323 52707
+- Sourcegrouppublic.tableausoftware.com  1    10336 52721
+- Sourcegroupgoogle                      1    10337 52722
+- Timeinpage                             1    10726 53110
+- Exits                                  1    12764 55149
+- Visits                                 1    14320 56704
+- Uniquepageviews                        1    17682 60066
+
+Step:  AIC=52681.98
+Bounces ~ Exits + ContinentAS + ContinentN.America + ContinentOC + 
+    ContinentSA + Sourcegroupfacebook + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegroupreddit.com + 
+    Sourcegroupt.co + Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+- Sourcegroupt.co                        1    10297 52680
+- ContinentAS                            1    10298 52680
+- Sourcegroupfacebook                    1    10298 52680
+- ContinentSA                            1    10298 52680
+- Sourcegroupreddit.com                  1    10298 52681
+- ContinentOC                            1    10298 52681
+<none>                                        10297 52682
+- ContinentN.America                     1    10299 52682
++ ContinentEU                            1    10297 52684
+- Sourcegroupvisualisingdata.com         1    10304 52687
+- Sourcegrouptableausoftware.com         1    10322 52704
+- SourcegroupOthers                      1    10323 52705
+- Sourcegrouppublic.tableausoftware.com  1    10336 52719
+- Sourcegroupgoogle                      1    10337 52720
+- Timeinpage                             1    10726 53108
+- Exits                                  1    12764 55147
+- Visits                                 1    14320 56702
+- Uniquepageviews                        1    17682 60064
+
+Step:  AIC=52680.08
+Bounces ~ Exits + ContinentAS + ContinentN.America + ContinentOC + 
+    ContinentSA + Sourcegroupfacebook + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegroupreddit.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+- ContinentAS                            1    10298 52678
+- Sourcegroupfacebook                    1    10298 52678
+- ContinentSA                            1    10298 52679
+- ContinentOC                            1    10298 52679
+- Sourcegroupreddit.com                  1    10298 52679
+<none>                                        10297 52680
+- ContinentN.America                     1    10300 52680
++ Sourcegroupt.co                        1    10297 52682
++ ContinentEU                            1    10297 52682
+- Sourcegroupvisualisingdata.com         1    10305 52685
+- Sourcegrouptableausoftware.com         1    10323 52704
+- SourcegroupOthers                      1    10326 52707
+- Sourcegrouppublic.tableausoftware.com  1    10338 52719
+- Sourcegroupgoogle                      1    10345 52726
+- Timeinpage                             1    10726 53106
+- Exits                                  1    12765 55145
+- Visits                                 1    14320 56700
+- Uniquepageviews                        1    17682 60063
+
+Step:  AIC=52678.2
+Bounces ~ Exits + ContinentN.America + ContinentOC + ContinentSA + 
+    Sourcegroupfacebook + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegroupreddit.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+- Sourcegroupfacebook                    1    10298 52676
+- ContinentSA                            1    10298 52677
+- ContinentOC                            1    10298 52677
+- Sourcegroupreddit.com                  1    10298 52677
+<none>                                        10298 52678
+- ContinentN.America                     1    10300 52678
++ ContinentAS                            1    10297 52680
++ ContinentEU                            1    10298 52680
++ Sourcegroupt.co                        1    10298 52680
+- Sourcegroupvisualisingdata.com         1    10305 52684
+- Sourcegrouptableausoftware.com         1    10323 52702
+- SourcegroupOthers                      1    10326 52705
+- Sourcegrouppublic.tableausoftware.com  1    10338 52717
+- Sourcegroupgoogle                      1    10345 52724
+- Timeinpage                             1    10726 53105
+- Exits                                  1    12765 55144
+- Visits                                 1    14320 56699
+- Uniquepageviews                        1    17682 60061
+
+Step:  AIC=52676.41
+Bounces ~ Exits + ContinentN.America + ContinentOC + ContinentSA + 
+    Sourcegroupgoogle + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits
+
+                                        Df Deviance   AIC
+- ContinentSA                            1    10298 52675
+- ContinentOC                            1    10298 52675
+- Sourcegroupreddit.com                  1    10298 52675
+<none>                                        10298 52676
+- ContinentN.America                     1    10300 52676
++ Sourcegroupfacebook                    1    10298 52678
++ ContinentAS                            1    10298 52678
++ Sourcegroupt.co                        1    10298 52678
++ ContinentEU                            1    10298 52678
+- Sourcegroupvisualisingdata.com         1    10305 52682
+- Sourcegrouptableausoftware.com         1    10324 52700
+- SourcegroupOthers                      1    10326 52703
+- Sourcegrouppublic.tableausoftware.com  1    10338 52715
+- Sourcegroupgoogle                      1    10345 52722
+- Timeinpage                             1    10726 53103
+- Exits                                  1    12765 55142
+- Visits                                 1    14320 56697
+- Uniquepageviews                        1    17684 60060
+
+Step:  AIC=52674.84
+Bounces ~ Exits + ContinentN.America + ContinentOC + Sourcegroupgoogle + 
+    SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegroupreddit.com + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits
+
+                                        Df Deviance   AIC
+- ContinentOC                            1    10299 52673
+- Sourcegroupreddit.com                  1    10299 52674
+- ContinentN.America                     1    10300 52675
+<none>                                        10298 52675
++ ContinentSA                            1    10298 52676
++ ContinentEU                            1    10298 52677
++ Sourcegroupfacebook                    1    10298 52677
++ Sourcegroupt.co                        1    10298 52677
++ ContinentAS                            1    10298 52677
+- Sourcegroupvisualisingdata.com         1    10306 52680
+- Sourcegrouptableausoftware.com         1    10324 52699
+- SourcegroupOthers                      1    10327 52702
+- Sourcegrouppublic.tableausoftware.com  1    10338 52713
+- Sourcegroupgoogle                      1    10346 52720
+- Timeinpage                             1    10727 53101
+- Exits                                  1    12766 55140
+- Visits                                 1    14320 56695
+- Uniquepageviews                        1    17684 60058
+
+Step:  AIC=52673.33
+Bounces ~ Exits + ContinentN.America + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegroupreddit.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+- Sourcegroupreddit.com                  1    10299 52672
+- ContinentN.America                     1    10300 52673
+<none>                                        10299 52673
++ ContinentEU                            1    10298 52675
++ ContinentOC                            1    10298 52675
++ ContinentSA                            1    10298 52675
++ Sourcegroupfacebook                    1    10298 52675
++ Sourcegroupt.co                        1    10299 52675
++ ContinentAS                            1    10299 52675
+- Sourcegroupvisualisingdata.com         1    10306 52679
+- Sourcegrouptableausoftware.com         1    10324 52697
+- SourcegroupOthers                      1    10328 52700
+- Sourcegrouppublic.tableausoftware.com  1    10339 52712
+- Sourcegroupgoogle                      1    10346 52719
+- Timeinpage                             1    10727 53100
+- Exits                                  1    12767 55139
+- Visits                                 1    14321 56694
+- Uniquepageviews                        1    17685 60058
+
+Step:  AIC=52672.02
+Bounces ~ Exits + ContinentN.America + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits
+
+                                        Df Deviance   AIC
+- ContinentN.America                     1    10301 52671
+<none>                                        10299 52672
++ Sourcegroupreddit.com                  1    10299 52673
++ ContinentEU                            1    10299 52673
++ ContinentOC                            1    10299 52674
++ ContinentSA                            1    10299 52674
++ Sourcegroupfacebook                    1    10299 52674
++ Sourcegroupt.co                        1    10299 52674
++ ContinentAS                            1    10299 52674
+- Sourcegroupvisualisingdata.com         1    10306 52677
+- Sourcegrouptableausoftware.com         1    10324 52695
+- SourcegroupOthers                      1    10328 52698
+- Sourcegrouppublic.tableausoftware.com  1    10339 52710
+- Sourcegroupgoogle                      1    10346 52717
+- Timeinpage                             1    10728 53098
+- Exits                                  1    12768 55139
+- Visits                                 1    14321 56692
+- Uniquepageviews                        1    17685 60056
+
+Step:  AIC=52671.37
+Bounces ~ Exits + Sourcegroupgoogle + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Uniquepageviews + Visits
+
+                                        Df Deviance   AIC
+<none>                                        10301 52671
++ ContinentEU                            1    10299 52672
++ ContinentN.America                     1    10299 52672
++ Sourcegroupreddit.com                  1    10300 52673
++ Sourcegroupfacebook                    1    10300 52673
++ ContinentAS                            1    10300 52673
++ Sourcegroupt.co                        1    10301 52673
++ ContinentOC                            1    10301 52673
++ ContinentSA                            1    10301 52673
+- Sourcegroupvisualisingdata.com         1    10308 52677
+- Sourcegrouptableausoftware.com         1    10326 52694
+- SourcegroupOthers                      1    10330 52699
+- Sourcegrouppublic.tableausoftware.com  1    10340 52709
+- Sourcegroupgoogle                      1    10349 52717
+- Timeinpage                             1    10729 53098
+- Exits                                  1    12770 55138
+- Visits                                 1    14321 56690
+- Uniquepageviews                        1    17689 60058
+There were 50 or more warnings (use warnings() to see the first 50)
+> summary(lm_tuned)
+
+Call:
+glm(formula = Bounces ~ Exits + Sourcegroupgoogle + SourcegroupOthers + 
+    Sourcegrouppublic.tableausoftware.com + Sourcegrouptableausoftware.com + 
+    Sourcegroupvisualisingdata.com + Timeinpage + Uniquepageviews + 
+    Visits, family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-17.7015   -0.2581   -0.0177    0.0880   18.7766  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -2.046e-01  1.188e-02 -17.218  < 2e-16 ***
+Exits                                  1.180e+00  3.385e-02  34.860  < 2e-16 ***
+Sourcegroupgoogle                     -1.070e-01  1.542e-02  -6.937 4.00e-12 ***
+SourcegroupOthers                     -1.098e-01  2.040e-02  -5.379 7.48e-08 ***
+Sourcegrouppublic.tableausoftware.com -2.911e-01  4.850e-02  -6.003 1.94e-09 ***
+Sourcegrouptableausoftware.com        -1.520e-01  3.090e-02  -4.921 8.62e-07 ***
+Sourcegroupvisualisingdata.com        -1.225e-01  4.522e-02  -2.708  0.00676 ** 
+Timeinpage                            -8.946e-04  5.444e-05 -16.433  < 2e-16 ***
+Uniquepageviews                       -3.197e+00  5.834e-02 -54.791  < 2e-16 ***
+Visits                                 2.239e+00  5.209e-02  42.977  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 23328  on 32108  degrees of freedom
+Residual deviance: 10301  on 32099  degrees of freedom
+AIC: 52671
+
+Number of Fisher Scoring iterations: 7
+
+> log_model_p2 = glm(formula = Bounces ~ Exits + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com
++                    + Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + Timeinpage + Visits,
++                    data = data, family = "poisson")
+Warning message:
+glm.fit: fitted rates numerically 0 occurred 
+> summary(log_model_p2)
+
+Call:
+glm(formula = Bounces ~ Exits + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Visits, family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-12.9258   -0.9323    0.1863    0.1863   12.7719  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -4.178e-01  8.422e-03 -49.612  < 2e-16 ***
+Exits                                  2.492e-01  1.214e-02  20.524  < 2e-16 ***
+SourcegroupOthers                     -1.498e-01  1.878e-02  -7.977 1.50e-15 ***
+Sourcegrouppublic.tableausoftware.com -6.829e-01  4.779e-02 -14.291  < 2e-16 ***
+Sourcegrouptableausoftware.com        -3.386e-01  2.983e-02 -11.353  < 2e-16 ***
+Sourcegroupvisualisingdata.com        -2.985e-01  4.450e-02  -6.708 1.97e-11 ***
+Timeinpage                            -2.278e-03  7.798e-05 -29.216  < 2e-16 ***
+Visits                                -2.362e-02  1.080e-02  -2.188   0.0287 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 23328  on 32108  degrees of freedom
+Residual deviance: 17691  on 32101  degrees of freedom
+AIC: 60058
+
+Number of Fisher Scoring iterations: 7
+
+> lm_tuned = step(object = log_model_p2, direction = "both")
+Start:  AIC=60057.65
+Bounces ~ Exits + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Visits
+
+                                        Df Deviance   AIC
+<none>                                        17691 60058
+- Visits                                 1    17696 60060
+- Sourcegroupvisualisingdata.com         1    17741 60105
+- SourcegroupOthers                      1    17757 60121
+- Sourcegrouptableausoftware.com         1    17833 60198
+- Sourcegrouppublic.tableausoftware.com  1    17946 60311
+- Exits                                  1    18062 60427
+- Timeinpage                             1    19423 61787
+Warning messages:
+1: glm.fit: fitted rates numerically 0 occurred 
+2: glm.fit: fitted rates numerically 0 occurred 
+3: glm.fit: fitted rates numerically 0 occurred 
+4: glm.fit: fitted rates numerically 0 occurred 
+5: glm.fit: fitted rates numerically 0 occurred 
+6: glm.fit: fitted rates numerically 0 occurred 
+> summary(lm_tuned)
+
+Call:
+glm(formula = Bounces ~ Exits + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Visits, family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-12.9258   -0.9323    0.1863    0.1863   12.7719  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -4.178e-01  8.422e-03 -49.612  < 2e-16 ***
+Exits                                  2.492e-01  1.214e-02  20.524  < 2e-16 ***
+SourcegroupOthers                     -1.498e-01  1.878e-02  -7.977 1.50e-15 ***
+Sourcegrouppublic.tableausoftware.com -6.829e-01  4.779e-02 -14.291  < 2e-16 ***
+Sourcegrouptableausoftware.com        -3.386e-01  2.983e-02 -11.353  < 2e-16 ***
+Sourcegroupvisualisingdata.com        -2.985e-01  4.450e-02  -6.708 1.97e-11 ***
+Timeinpage                            -2.278e-03  7.798e-05 -29.216  < 2e-16 ***
+Visits                                -2.362e-02  1.080e-02  -2.188   0.0287 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 23328  on 32108  degrees of freedom
+Residual deviance: 17691  on 32101  degrees of freedom
+AIC: 60058
+
+Number of Fisher Scoring iterations: 7
+
+> #Check for multicolinearity
+> vif(lm_tuned)
+                                Exits                     SourcegroupOthers 
+                            48.509328                              1.024465 
+Sourcegrouppublic.tableausoftware.com        Sourcegrouptableausoftware.com 
+                             1.009561                              1.017159 
+       Sourcegroupvisualisingdata.com                            Timeinpage 
+                             1.008188                              2.448900 
+                               Visits 
+                            52.254253 
+> #Try a model by removing Exits
+> log_model_p3 = glm(formula = Bounces ~ SourcegroupOthers + Sourcegrouppublic.tableausoftware.com
++                    + Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + Timeinpage + Visits,
++                    data = data, family = "poisson")
+Warning message:
+glm.fit: fitted rates numerically 0 occurred 
+> summary(log_model_p3)
+
+Call:
+glm(formula = Bounces ~ SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Visits, family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-16.7431   -0.9647    0.1733    0.1733   13.6746  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -3.666e-01  8.007e-03 -45.781  < 2e-16 ***
+SourcegroupOthers                     -1.559e-01  1.878e-02  -8.303  < 2e-16 ***
+Sourcegrouppublic.tableausoftware.com -6.880e-01  4.779e-02 -14.396  < 2e-16 ***
+Sourcegrouptableausoftware.com        -3.453e-01  2.982e-02 -11.580  < 2e-16 ***
+Sourcegroupvisualisingdata.com        -3.044e-01  4.450e-02  -6.840 7.89e-12 ***
+Timeinpage                            -2.529e-03  8.527e-05 -29.663  < 2e-16 ***
+Visits                                 1.881e-01  2.428e-03  77.496  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 23328  on 32108  degrees of freedom
+Residual deviance: 18062  on 32102  degrees of freedom
+AIC: 60427
+
+Number of Fisher Scoring iterations: 7
+
+> lm_tuned = step(object = log_model_p3, direction = "both")
+Start:  AIC=60426.52
+Bounces ~ SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Visits
+
+                                        Df Deviance   AIC
+<none>                                        18062 60427
+- Sourcegroupvisualisingdata.com         1    18113 60476
+- SourcegroupOthers                      1    18133 60496
+- Sourcegrouptableausoftware.com         1    18210 60573
+- Sourcegrouppublic.tableausoftware.com  1    18321 60684
+- Timeinpage                             1    19936 62298
+- Visits                                 1    21803 64166
+Warning messages:
+1: glm.fit: fitted rates numerically 0 occurred 
+2: glm.fit: fitted rates numerically 0 occurred 
+3: glm.fit: fitted rates numerically 0 occurred 
+4: glm.fit: fitted rates numerically 0 occurred 
+5: glm.fit: fitted rates numerically 0 occurred 
+> summary(lm_tuned)
+
+Call:
+glm(formula = Bounces ~ SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage + Visits, family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-16.7431   -0.9647    0.1733    0.1733   13.6746  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -3.666e-01  8.007e-03 -45.781  < 2e-16 ***
+SourcegroupOthers                     -1.559e-01  1.878e-02  -8.303  < 2e-16 ***
+Sourcegrouppublic.tableausoftware.com -6.880e-01  4.779e-02 -14.396  < 2e-16 ***
+Sourcegrouptableausoftware.com        -3.453e-01  2.982e-02 -11.580  < 2e-16 ***
+Sourcegroupvisualisingdata.com        -3.044e-01  4.450e-02  -6.840 7.89e-12 ***
+Timeinpage                            -2.529e-03  8.527e-05 -29.663  < 2e-16 ***
+Visits                                 1.881e-01  2.428e-03  77.496  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 23328  on 32108  degrees of freedom
+Residual deviance: 18062  on 32102  degrees of freedom
+AIC: 60427
+
+Number of Fisher Scoring iterations: 7
+
+> #AIC: 60427
+> #Try model by removing Visits
+> log_model_p4 = glm(formula = Bounces ~ Exits + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com
++                    + Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + Timeinpage,
++                    data = data, family = "poisson")
+Warning message:
+glm.fit: fitted rates numerically 0 occurred 
+> summary(log_model_p4)
+
+Call:
+glm(formula = Bounces ~ Exits + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage, family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-13.7161   -0.9367    0.1844    0.1844   12.9392  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -4.134e-01  8.179e-03 -50.548  < 2e-16 ***
+Exits                                  2.232e-01  2.638e-03  84.621  < 2e-16 ***
+SourcegroupOthers                     -1.498e-01  1.878e-02  -7.977 1.50e-15 ***
+Sourcegrouppublic.tableausoftware.com -6.816e-01  4.778e-02 -14.265  < 2e-16 ***
+Sourcegrouptableausoftware.com        -3.382e-01  2.983e-02 -11.339  < 2e-16 ***
+Sourcegroupvisualisingdata.com        -2.981e-01  4.450e-02  -6.698 2.11e-11 ***
+Timeinpage                            -2.330e-03  7.565e-05 -30.805  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 23328  on 32108  degrees of freedom
+Residual deviance: 17696  on 32102  degrees of freedom
+AIC: 60060
+
+Number of Fisher Scoring iterations: 7
+
+> lm_tuned = step(object = log_model_p4, direction = "both")
+Start:  AIC=60060.41
+Bounces ~ Exits + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage
+
+                                        Df Deviance   AIC
+<none>                                        17696 60060
+- Sourcegroupvisualisingdata.com         1    17745 60108
+- SourcegroupOthers                      1    17762 60124
+- Sourcegrouptableausoftware.com         1    17838 60200
+- Sourcegrouppublic.tableausoftware.com  1    17950 60313
+- Timeinpage                             1    19528 61890
+- Exits                                  1    21803 64166
+Warning messages:
+1: glm.fit: fitted rates numerically 0 occurred 
+2: glm.fit: fitted rates numerically 0 occurred 
+3: glm.fit: fitted rates numerically 0 occurred 
+4: glm.fit: fitted rates numerically 0 occurred 
+5: glm.fit: fitted rates numerically 0 occurred 
+> summary(lm_tuned)
+
+Call:
+glm(formula = Bounces ~ Exits + SourcegroupOthers + Sourcegrouppublic.tableausoftware.com + 
+    Sourcegrouptableausoftware.com + Sourcegroupvisualisingdata.com + 
+    Timeinpage, family = "poisson", data = data)
+
+Deviance Residuals: 
+     Min        1Q    Median        3Q       Max  
+-13.7161   -0.9367    0.1844    0.1844   12.9392  
+
+Coefficients:
+                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                           -4.134e-01  8.179e-03 -50.548  < 2e-16 ***
+Exits                                  2.232e-01  2.638e-03  84.621  < 2e-16 ***
+SourcegroupOthers                     -1.498e-01  1.878e-02  -7.977 1.50e-15 ***
+Sourcegrouppublic.tableausoftware.com -6.816e-01  4.778e-02 -14.265  < 2e-16 ***
+Sourcegrouptableausoftware.com        -3.382e-01  2.983e-02 -11.339  < 2e-16 ***
+Sourcegroupvisualisingdata.com        -2.981e-01  4.450e-02  -6.698 2.11e-11 ***
+Timeinpage                            -2.330e-03  7.565e-05 -30.805  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 23328  on 32108  degrees of freedom
+Residual deviance: 17696  on 32102  degrees of freedom
+AIC: 60060
+
+Number of Fisher Scoring iterations: 7
+
+> remove(lm_tuned, log_model, log_model_p2, log_model_p3, log_model_p4)

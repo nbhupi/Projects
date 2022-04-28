@@ -1,0 +1,185 @@
+> raw.data = read.csv(choose.files())
+> data <- raw.data #Take the backup of the data
+> str(data)
+'data.frame':	541909 obs. of  9 variables:
+ $ InvoiceNo  : Factor w/ 25900 levels "536365","536366",..: 1 1 1 1 1 1 1 2 2 3 ...
+ $ StockCode  : Factor w/ 4070 levels "10002","10080",..: 3538 2795 3045 2986 2985 1663 801 1548 1547 3306 ...
+ $ Description: Factor w/ 4224 levels ""," 4 PURPLE FLOCK DINNER CANDLES",..: 4027 4035 932 1959 2980 3235 1573 1698 1695 259 ...
+ $ Quantity   : int  6 6 8 6 6 2 6 6 6 32 ...
+ $ InvoiceDate: Factor w/ 305 levels "1-Apr-17","1-Aug-17",..: 212 212 212 212 212 212 212 212 212 212 ...
+ $ UnitPrice  : num  2.55 3.39 2.75 3.39 3.39 7.65 4.25 1.85 1.85 1.69 ...
+ $ CustomerID : int  17850 17850 17850 17850 17850 17850 17850 17850 17850 13047 ...
+ $ Country    : Factor w/ 38 levels "Australia","Austria",..: 36 36 36 36 36 36 36 36 36 36 ...
+ $ X          : logi  NA NA NA NA NA NA ...
+> data$X = NULL
+> colSums(is.na(data)) # This will give the blank rows - remove all the rows with blank custID
+  InvoiceNo   StockCode Description    Quantity InvoiceDate   UnitPrice  CustomerID 
+          0           0           0           0           0           0      135080 
+    Country 
+          0 
+> data = subset(data, !is.na(data$CustomerID))
+> table(data$Country != "United Kingdom")
+
+ FALSE   TRUE 
+361878  44951 
+> data <- subset(data, Country == "United Kingdom")
+> data$return_invoice = grepl(pattern = "C", x = data$InvoiceNo)
+> data$purchase_invoice <- ifelse(data$return_invoice=="TRUE", 0, 1)
+> data$recency <- as.Date("2017-12-8") - as.Date(data$InvoiceDate, "%d-%b-%y")
+> data$recency = as.integer(data$recency)
+> data$invoice_amout <- data$Quantity * data$UnitPrice
+> library(dplyr)
+> temp <- subset(data, purchase_invoice == 1)
+> df_customers = summarise(group_by(.data = temp, CustomerID), recency = min(recency), frequency = length(unique(InvoiceNo)))
+> inv_amt = summarise(group_by(.data = data, CustomerID), invoice_amout = sum(invoice_amout))
+> df_customers = merge(df_customers, inv_amt, by = "CustomerID",  all.x=TRUE, sort=TRUE)
+> remove(inv_amt, temp)
+> df_customers$invoice_amout <- ifelse(df_customers$invoice_amout <= 0, 0.1, df_customers$invoice_amout)
+> boxplot(x = df_customers)
+> df_customers$log_recency = log(df_customers$recency)
+> df_customers$log_frequency = log(df_customers$frequency)
+> df_customers$log_inv_amount = log(df_customers$invoice_amout)
+> df_customers$recency.z <- scale(df_customers$log_recency, center=TRUE, scale=TRUE)
+> df_customers$frequency.z <- scale(df_customers$log_frequency, center=TRUE, scale=TRUE)
+> df_customers$inv_amount.z <- scale(df_customers$log_inv_amount, center=TRUE, scale=TRUE)
+> k = 10
+> df_Rsquared = data.frame(Centers = integer(),
++                          Rsquared=integer())
+> for (i in (1:k))
++ {
++   kmeans(df_customers[, c(8,9,10)], centers = i, nstart = 20)-> dfCluster
++   Rsquared = round(dfCluster$betweenss/ dfCluster$totss,digits = 4)
++   cur_row = data.frame(i, Rsquared)
++   df_Rsquared = rbind(df_Rsquared, cur_row)
++   output = paste("Centers = ", i, " R-squared = ", Rsquared)
++  
++   df_cluster_centers = data.frame(Recency = integer(),
++                                   Frequency = integer(),
++                                   Invoice_amount = integer())
++   
++   for (j in (1:i))
++   {
++     
++     cur_row = summarise(.data = df_customers[,c(2,3,4)][dfCluster$cluster == j, ], 
++                         Recency = median(recency), 
++                         Frequency = median(frequency), 
++                         Invoice_amount = median(invoice_amout))
++     
++     df_cluster_centers = rbind(df_cluster_centers, cur_row)
++   }
++   print(output)
++   print(df_cluster_centers)
++   cat("\n")
++ }
+[1] "Centers =  1  R-squared =  0"
+  Recency Frequency Invoice_amount
+1      51         2         633.66
+
+[1] "Centers =  2  R-squared =  0.4907"
+  Recency Frequency Invoice_amount
+1      17         5       1838.175
+2     104         1        330.450
+
+[1] "Centers =  3  R-squared =  0.6069"
+  Recency Frequency Invoice_amount
+1      37         3        897.045
+2       9         9       3127.820
+3     157         1        258.945
+
+[1] "Centers =  4  R-squared =  0.6755"
+  Recency Frequency Invoice_amount
+1       9         9        3075.04
+2     186         1         257.70
+3      20         2         389.85
+4      59         4        1145.43
+
+[1] "Centers =  5  R-squared =  0.7275"
+  Recency Frequency Invoice_amount
+1      19         2        388.790
+2      53         4       1208.510
+3       8        10       3169.885
+4     139         1          0.100
+5     180         1        279.940
+
+[1] "Centers =  6  R-squared =  0.7686"
+  Recency Frequency Invoice_amount
+1       9        12       4594.490
+2      37         1        314.400
+3      11         4       1138.865
+4     135         1          0.100
+5     227         1        252.060
+6      68         3       1118.810
+
+[1] "Centers =  7  R-squared =  0.8015"
+  Recency Frequency Invoice_amount
+1   241.5         1        226.135
+2    10.0         3        836.630
+3   135.0         1          0.100
+4    88.5         3        766.195
+5    40.0         1        276.420
+6     5.0        14       4819.330
+7    30.5         6       2186.755
+
+[1] "Centers =  8  R-squared =  0.8227"
+  Recency Frequency Invoice_amount
+1       5         6       1926.880
+2     135         1          0.100
+3     106         2        711.410
+4       5        18       7024.530
+5     246         1        216.210
+6      18         2        627.130
+7      34         6       2091.505
+8      47         1        251.240
+
+[1] "Centers =  9  R-squared =  0.8382"
+  Recency Frequency Invoice_amount
+1     9.0         2        378.590
+2    51.0         1        276.490
+3   122.5         2        694.515
+4   139.0         1          0.100
+5     5.0        19       7454.070
+6    39.0         7       2445.120
+7    27.0         3        858.410
+8     6.0         6       1968.420
+9   248.0         1        214.060
+
+[1] "Centers =  10  R-squared =  0.8503"
+   Recency Frequency Invoice_amount
+1       51         1        261.185
+2        4         5       1651.030
+3       10         2        342.975
+4       19         8       2781.500
+5       72         5       1742.325
+6      139         2        627.765
+7      249         1        203.910
+8        4        19       7490.170
+9       26         3        825.465
+10     139         1          0.100
+
+> plot(x = df_Rsquared$i, y = df_Rsquared$Rsquared, type = "l", xlab = "K - Centers", ylab = "RSquared")
+> remove(cur_row, df_cluster_centers, df_Rsquared, dfCluster, i, j, k, output, Rsquared)
+> library(cluster)
+> dist(df_customers[,c(8,9,10)])-> df_scaled
+> clust = hclust(d = df_scaled, method = "ward.D")
+> clust
+
+Call:
+hclust(d = df_scaled, method = "ward.D")
+
+Cluster method   : ward.D 
+Distance         : euclidean 
+Number of objects: 3921 
+
+> plot(as.dendrogram(clust))
+> rect.hclust(tree = clust,k = 5)
+> k = cutree(clust, 5)
+> aggregate(df_customers[,c(2,3,4)], by = list(k), median)
+  Group.1 recency frequency invoice_amout
+1       1   254.5         1       200.130
+2       2     6.0        11      3614.015
+3       3    89.0         3       852.770
+4       4    51.0         1       300.595
+5       5    17.0         3       911.150
+> 
+> 
+> ############################################################################################
